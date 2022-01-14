@@ -87,6 +87,12 @@ def experiment(
         input_dim, output_dim = 30, 1200
         use_embeddings = True
         experiment_type = 'classification'
+    elif task == 'eurosat':
+        from universal_computation.datasets.eurosat import EuroSatDataset
+        dataset = EuroSatDataset(batch_size=batch_size, patch_size=patch_size, device=device)
+        input_dim, output_dim = 3 * patch_size**2, 10
+        use_embeddings = False
+        experiment_type = 'classification'
 
     elif task.split('-')[0] == 'phenocam':
         from universal_computation.datasets.phenocam import PhenoCamDataset

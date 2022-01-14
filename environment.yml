@@ -181,4 +181,3 @@ dependencies:
     - transformers==4.1.1
     - wandb==0.12.7
     - yaspin==2.1.0
-prefix: /u/home/j/jkjewik/.conda/envs/fpt
