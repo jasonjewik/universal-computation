@@ -23,6 +23,7 @@ class FPT(nn.Module):
             freeze_out=False,
             dropout=0.1,
             orth_gain=1.41,
+            is_segmentation=False
     ):
         super().__init__()
 
@@ -37,7 +38,8 @@ class FPT(nn.Module):
         self.dropout = dropout
 
         if 'gpt' in model_name:
-            assert model_name in ['gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl']
+            assert model_name in [
+                'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl']
 
             from transformers import GPT2Model
 
@@ -65,7 +67,8 @@ class FPT(nn.Module):
             )
             embedding_size = 768
 
-            self.vit_pos_embed = nn.Parameter(torch.zeros(1, 1024, embedding_size))
+            self.vit_pos_embed = nn.Parameter(
+                torch.zeros(1, 1024, embedding_size))
             if freeze_pos:
                 self.vit_pos_embed.requires_grad = False
 
@@ -127,6 +130,8 @@ class FPT(nn.Module):
             out_layers.append(nn.Dropout(dropout))
             last_output_size = size
         out_layers.append(nn.Linear(last_output_size, output_dim))
+        if is_segmentation:
+            out_layers.append(nn.Sigmoid())
         self.out_net = nn.Sequential(*out_layers)
 
         if freeze_trans:
@@ -155,7 +160,8 @@ class FPT(nn.Module):
         orig_dim = x.shape[-1]
         if orig_dim != self.input_dim and not self.use_embeddings_for_in:
             if orig_dim % self.input_dim != 0:
-                raise ValueError('dimension of x must be divisible by patch size')
+                raise ValueError(
+                    'dimension of x must be divisible by patch size')
             ratio = orig_dim // self.input_dim
             x = x.reshape(x.shape[0], x.shape[1] * ratio, self.input_dim)
         else:
@@ -182,13 +188,14 @@ class FPT(nn.Module):
 
         # take final hidden state of tokens corresponding to last patch
         if self.return_last_only:
-            x = x[:,-ratio:]
+            x = x[:, -ratio:]
 
         # single linear layer applied to last hidden state
         x = self.out_net(x)
 
         # if we did patch resizing above, return in the original shape (batch_size, seq_len, dim)
         if self.return_last_only and ratio > 1:
-            x = x.reshape(x.shape[0], x.shape[1] // ratio, ratio * self.output_dim)
+            x = x.reshape(x.shape[0], x.shape[1] //
+                          ratio, ratio * self.output_dim)
 
         return x

@@ -79,17 +79,20 @@ class Trainer:
         start_test_time = time.time()
         with torch.no_grad():
             for _ in range(test_steps):
-                x, y = self.dataset.get_batch(self.eval_batch_size, train=False)
+                x, y = self.dataset.get_batch(
+                    self.eval_batch_size, train=False)
                 loss, acc = self.get_loss(x, y, return_acc=True)
                 test_loss += loss.detach().cpu().item() / test_steps
                 accuracy += acc / test_steps
         end_test_time = time.time()
 
-        self.diagnostics['Average Train Loss'] = sum(train_losses) / self.steps_per_epoch
+        self.diagnostics['Average Train Loss'] = sum(
+            train_losses) / self.steps_per_epoch
         self.diagnostics['Start Train Loss'] = train_losses[0]
         self.diagnostics['Final Train Loss'] = train_losses[-1]
         self.diagnostics['Test Loss'] = test_loss
         self.diagnostics['Test Accuracy'] = accuracy
-        self.diagnostics['Train Accuracy'] = tr_accuracy / (self.steps_per_epoch * self.grad_accumulate)
+        self.diagnostics['Train Accuracy'] = tr_accuracy / \
+            (self.steps_per_epoch * self.grad_accumulate)
         self.diagnostics['Time Training'] = end_train_time - start_train_time
         self.diagnostics['Time Testing'] = end_test_time - start_test_time

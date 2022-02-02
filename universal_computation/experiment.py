@@ -5,7 +5,6 @@ import wandb
 import argparse
 from datetime import datetime
 import random
-import sys
 
 from universal_computation.fpt import FPT
 from universal_computation.trainer import Trainer
@@ -16,7 +15,6 @@ def experiment(
         exp_args,
         **kwargs
 ):
-
     """
     Preliminary checks
     """
@@ -24,7 +22,7 @@ def experiment(
     # Must be able to accumulate gradient if batch size is large
     assert 'batch_size' in kwargs
     assert kwargs['batch_size'] <= exp_args['gpu_batch_size'] or \
-           kwargs['batch_size'] % exp_args['gpu_batch_size'] == 0
+        kwargs['batch_size'] % exp_args['gpu_batch_size'] == 0
 
     """
     Create dataset, model, and trainer
@@ -39,7 +37,8 @@ def experiment(
 
     if task == 'bit-memory':
         from universal_computation.datasets.bit_memory import BitMemoryDataset
-        dataset = BitMemoryDataset(n=kwargs['n'], num_patterns=kwargs['num_patterns'], device=device)
+        dataset = BitMemoryDataset(
+            n=kwargs['n'], num_patterns=kwargs['num_patterns'], device=device)
         input_dim = kwargs['n'] if patch_size is None else patch_size
         output_dim = 2*kwargs['n'] if patch_size is None else 2 * patch_size
         use_embeddings = False
@@ -47,7 +46,8 @@ def experiment(
 
     elif task == 'bit-xor':
         from universal_computation.datasets.bit_xor import BitXORDataset
-        dataset = BitXORDataset(n=kwargs['n'], num_patterns=kwargs['num_patterns'], device=device)
+        dataset = BitXORDataset(
+            n=kwargs['n'], num_patterns=kwargs['num_patterns'], device=device)
         input_dim = kwargs['n'] if patch_size is None else patch_size
         output_dim = 2 * kwargs['n'] if patch_size is None else 2 * patch_size
         use_embeddings = False
@@ -62,47 +62,64 @@ def experiment(
 
     elif task == 'mnist':
         from universal_computation.datasets.mnist import MNISTDataset
-        dataset = MNISTDataset(batch_size=batch_size, patch_size=patch_size, device=device)
+        dataset = MNISTDataset(batch_size=batch_size,
+                               patch_size=patch_size, device=device)
         input_dim, output_dim = patch_size ** 2, 10
         use_embeddings = False
         experiment_type = 'classification'
 
     elif task == 'cifar10':
         from universal_computation.datasets.cifar10 import CIFAR10Dataset
-        dataset = CIFAR10Dataset(batch_size=batch_size, patch_size=patch_size, device=device)
+        dataset = CIFAR10Dataset(
+            batch_size=batch_size, patch_size=patch_size, device=device)
         input_dim, output_dim = 3 * patch_size**2, 10
         use_embeddings = False
         experiment_type = 'classification'
 
     elif task == 'cifar10-gray':
         from universal_computation.datasets.cifar10_gray import CIFAR10GrayDataset
-        dataset = CIFAR10GrayDataset(batch_size=batch_size, patch_size=patch_size, device=device)
+        dataset = CIFAR10GrayDataset(
+            batch_size=batch_size, patch_size=patch_size, device=device)
         input_dim, output_dim = patch_size**2, 10
         use_embeddings = False
         experiment_type = 'classification'
 
     elif task == 'remote-homology':
         from universal_computation.datasets.remote_homology import RemoteHomologyDataset
-        dataset = RemoteHomologyDataset(train_batch_size=batch_size, test_batch_size=4*batch_size, device=device)
+        dataset = RemoteHomologyDataset(
+            train_batch_size=batch_size, test_batch_size=4*batch_size, device=device)
         input_dim, output_dim = 30, 1200
         use_embeddings = True
         experiment_type = 'classification'
+
     elif task == 'eurosat':
         from universal_computation.datasets.eurosat import EuroSatDataset
-        dataset = EuroSatDataset(batch_size=batch_size, patch_size=patch_size, device=device)
+        dataset = EuroSatDataset(
+            batch_size=batch_size, patch_size=patch_size, device=device)
         input_dim, output_dim = 3 * patch_size**2, 10
         use_embeddings = False
         experiment_type = 'classification'
 
     elif task.split('-')[0] == 'phenocam':
         from universal_computation.datasets.phenocam import PhenoCamDataset
-        dataset = PhenoCamDataset(batch_size=batch_size, patch_size=patch_size, device=device, site=task.split('-')[1])
+        dataset = PhenoCamDataset(
+            batch_size=batch_size, patch_size=patch_size, device=device, site=task.split('-')[1])
         input_dim, output_dim = 3 * patch_size**2, 3
         use_embeddings = False
         experiment_type = 'classification'
 
+    elif task == 'next-day-wildfire-spread':
+        from universal_computation.datasets.next_day_wildfire_spread import NextDayWildfireSpreadDataset as NDWSD
+        dataset = NDWSD(batch_size=batch_size,
+                        patch_size=patch_size, device=device)
+        input_dim, output_dim = 12 * patch_size**2, 32 * 32
+        use_embeddings = False
+        experiment_type = 'segmentation'
+
     else:
         raise NotImplementedError('dataset not implemented')
+
+    is_segmentation = False
 
     if 'bit' in task:
 
@@ -140,6 +157,19 @@ def experiment(
             preds = preds[:, 0].argmax(-1)
             return (preds == true).mean()
 
+    elif experiment_type == 'segmentation':
+
+        bce_loss = torch.nn.BCELoss()
+        is_segmentation = True
+
+        def loss_fn(out, y, x=None):
+            out = out[:, 0]
+            return bce_loss(out, y)
+
+        def accuracy_fn(preds, true, x=None):
+            preds = preds[:, 0].round()
+            return (preds == true).mean()
+
     else:
         raise NotImplementedError('experiment_type not recognized')
 
@@ -161,6 +191,7 @@ def experiment(
         freeze_out=kwargs.get('freeze_out', False),
         dropout=kwargs['dropout'],
         orth_gain=kwargs['orth_gain'],
+        is_segmentation=is_segmentation
     )
     model.to(device)
 
@@ -218,7 +249,8 @@ def experiment(
         if save_models and ((t+1) % exp_args['save_models_every'] == 0 or
                             (t+1) == exp_args['num_iters']):
             with open(f'models/{run_name}.pt', 'wb') as f:
-                state_dict = dict(model=model.state_dict(), optim=trainer.optim.state_dict())
+                state_dict = dict(model=model.state_dict(),
+                                  optim=trainer.optim.state_dict())
                 torch.save(state_dict, f)
             print(f'Saved model at {t+1} iters: {run_name}')
 
@@ -236,7 +268,7 @@ def run_experiment(
     parser.add_argument('--test_steps_per_iter', type=int, default=25,
                         help='Number of test gradient steps per iteration')
 
-    parser.add_argument('--log_to_wandb', '-w', type=bool, default=False,
+    parser.add_argument('--log_to_wandb', '-w', action='store_true', default=False,
                         help='Whether or not to log to Weights and Biases')
     parser.add_argument('--note', '-n', type=str, default='',
                         help='An optional note to be logged to W&B')
@@ -245,7 +277,7 @@ def run_experiment(
     parser.add_argument('--include_date', type=bool, default=True,
                         help='Whether to include date in run name')
 
-    parser.add_argument('--save_models', '-s', type=bool, default=False,
+    parser.add_argument('--save_models', '-s', action='store_true', default=False,
                         help='Whether or not to save the model files locally')
     parser.add_argument('--save_models_every', '-int', type=int, default=25,
                         help='How often to save models locally')
@@ -255,7 +287,7 @@ def run_experiment(
     parser.add_argument('--gpu_batch_size', '-gbs', type=int, default=16,
                         help='Max batch size to put on GPU (used for gradient accumulation)')
 
-    exp_args = parser.parse_args(sys.argv[1:])
+    exp_args, _ = parser.parse_known_args()
 
     if exp_args.include_date:
         timestamp = datetime.now().strftime('%m-%d')
