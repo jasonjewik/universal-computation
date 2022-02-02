@@ -130,8 +130,6 @@ class FPT(nn.Module):
             out_layers.append(nn.Dropout(dropout))
             last_output_size = size
         out_layers.append(nn.Linear(last_output_size, output_dim))
-        if is_segmentation:
-            out_layers.append(nn.Sigmoid())
         self.out_net = nn.Sequential(*out_layers)
 
         if freeze_trans:

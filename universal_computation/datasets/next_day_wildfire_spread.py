@@ -365,7 +365,11 @@ class NextDayWildfireSpreadDataset(Dataset):
                 _, (x, y) = next(self.test_enum)
 
         x = torch.tensor(x.numpy())
-        y = torch.tensor(y.numpy())
+        y = torch.tensor(y.numpy(), dtype=int)
+
+        # PyTorch CE loss requires classes in the range [0, # classes]
+        # but the original dataset defines -1 to be a class
+        y += 1
 
         if self.patch_size is not None:
             x = rearrange(x, 'b (h p1) (w p2) c -> b (h w) (p1 p2 c)',

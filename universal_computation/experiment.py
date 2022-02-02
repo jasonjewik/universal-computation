@@ -112,14 +112,15 @@ def experiment(
         from universal_computation.datasets.next_day_wildfire_spread import NextDayWildfireSpreadDataset as NDWSD
         dataset = NDWSD(batch_size=batch_size,
                         patch_size=patch_size, device=device)
-        input_dim, output_dim = 12 * patch_size**2, 32 * 32
+        input_dim = 12 * patch_size**2  # 12 channels
+        image_dim = 32 * 32
+        n_classes = 3
+        output_dim = image_dim * n_classes  # single channel output
         use_embeddings = False
         experiment_type = 'segmentation'
 
     else:
         raise NotImplementedError('dataset not implemented')
-
-    is_segmentation = False
 
     if 'bit' in task:
 
@@ -150,7 +151,7 @@ def experiment(
         ce_loss = torch.nn.CrossEntropyLoss()
 
         def loss_fn(out, y, x=None):
-            out = out[:, 0]
+            out = out[:, 0].reshape((batch_size, ))
             return ce_loss(out, y)
 
         def accuracy_fn(preds, true, x=None):
@@ -159,15 +160,14 @@ def experiment(
 
     elif experiment_type == 'segmentation':
 
-        bce_loss = torch.nn.BCELoss()
-        is_segmentation = True
+        ce_loss = torch.nn.CrossEntropyLoss()
 
         def loss_fn(out, y, x=None):
-            out = out[:, 0]
-            return bce_loss(out, y)
+            out = out[:, 0].reshape((batch_size, n_classes, image_dim))
+            return ce_loss(out, y)
 
         def accuracy_fn(preds, true, x=None):
-            preds = preds[:, 0].round()
+            preds = preds[:, 0].argmax(-1)  # TODO: fix this
             return (preds == true).mean()
 
     else:
@@ -190,8 +190,7 @@ def experiment(
         freeze_ff=kwargs.get('freeze_ff', True),
         freeze_out=kwargs.get('freeze_out', False),
         dropout=kwargs['dropout'],
-        orth_gain=kwargs['orth_gain'],
-        is_segmentation=is_segmentation
+        orth_gain=kwargs['orth_gain']
     )
     model.to(device)
 
