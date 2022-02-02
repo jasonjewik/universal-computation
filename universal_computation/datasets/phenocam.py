@@ -10,6 +10,7 @@ import torchvision.transforms as transforms
 from universal_computation.datasets.dataset import Dataset
 from universal_computation.datasets.helpers.datasetops import read_annotations
 
+
 class PhenoCamDatasetHelper(torch.utils.data.Dataset):
     def __init__(self, img_dir, ann_file, transform=None, target_transform=None):
         df = read_annotations(ann_file)
@@ -43,31 +44,35 @@ class PhenoCamDataset(Dataset):
         if data_aug:
             transform = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Resize((224,224), interpolation=3),
+                transforms.Resize((224, 224), interpolation=3),
                 transforms.RandomApply([transforms.GaussianBlur(3)]),
-                transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
+                transforms.Normalize(IMAGENET_DEFAULT_MEAN,
+                                     IMAGENET_DEFAULT_STD),
             ])
         else:
             transform = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Resize((224,224), interpolation=3),
-                transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
+                transforms.Resize((224, 224), interpolation=3),
+                transforms.Normalize(IMAGENET_DEFAULT_MEAN,
+                                     IMAGENET_DEFAULT_STD),
             ])
 
         val_transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize((224,224), interpolation=3),
+            transforms.Resize((224, 224), interpolation=3),
             transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
         ])
 
         train_dir = f'data/phenocam/{site}_train'
         test_dir = f'data/phenocam/{site}_test'
         self.d_train = DataLoader(
-            PhenoCamDatasetHelper(train_dir, os.path.join(train_dir, 'annotations.csv'), transform=transform),
+            PhenoCamDatasetHelper(train_dir, os.path.join(
+                train_dir, 'annotations.csv'), transform=transform),
             batch_size=batch_size, drop_last=True, shuffle=True,
         )
         self.d_test = DataLoader(
-            PhenoCamDatasetHelper(test_dir, os.path.join(test_dir, 'annotations.csv'), transform=val_transform), 
+            PhenoCamDatasetHelper(test_dir, os.path.join(
+                test_dir, 'annotations.csv'), transform=val_transform),
             batch_size=batch_size, drop_last=True, shuffle=True,
         )
 
@@ -90,14 +95,15 @@ class PhenoCamDataset(Dataset):
             _, (x, y) = next(self.test_enum, (None, (None, None)))
             if x is None:
                 self.test_enum = enumerate(self.d_test)
-                _, (x, y) = next(self.train_enum)
+                _, (x, y) = next(self.test_enum)
 
         if self.patch_size is not None:
-            x = rearrange(x, 'b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=self.patch_size, p2=self.patch_size)
+            x = rearrange(x, 'b c (h p1) (w p2) -> b (h w) (p1 p2 c)',
+                          p1=self.patch_size, p2=self.patch_size)
 
         x = x.to(device=self.device)
         y = y.to(device=self.device)
-        
+
         self._ind += 1
 
         return x, y

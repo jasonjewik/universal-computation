@@ -11,10 +11,12 @@ import torchvision.transforms as transforms
 
 from universal_computation.datasets.dataset import Dataset
 
+
 class EuroSatDatasetHelper(torch.utils.data.Dataset):
     def __init__(self, img_dir, ann_file, transform=None, target_transform=None):
         df = pd.read_csv(ann_file)
-        self.img_labels = df[['label','img_name', 'int_label']].reset_index(drop=True)
+        self.img_labels = df[['label', 'img_name',
+                              'int_label']].reset_index(drop=True)
         self.img_dir = img_dir
         self.transform = transform
         self.target_transform = target_transform
@@ -27,7 +29,7 @@ class EuroSatDatasetHelper(torch.utils.data.Dataset):
         name = self.img_labels.iloc[idx, 1]
         int_label = self.img_labels.iloc[idx, 2]
         temp = os.path.join(self.img_dir, label)
-        img_path = os.path.join(temp,name)
+        img_path = os.path.join(temp, name)
         img = Image.open(img_path)
         if self.transform:
             img = self.transform(img)
@@ -46,29 +48,33 @@ class EuroSatDataset(Dataset):
         if data_aug:
             transform = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Resize((224,224), interpolation=3),
+                transforms.Resize((224, 224), interpolation=3),
                 transforms.RandomApply([transforms.GaussianBlur(3)]),
-                transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
+                transforms.Normalize(IMAGENET_DEFAULT_MEAN,
+                                     IMAGENET_DEFAULT_STD),
             ])
         else:
             transform = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Resize((224,224), interpolation=3),
-                transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
+                transforms.Resize((224, 224), interpolation=3),
+                transforms.Normalize(IMAGENET_DEFAULT_MEAN,
+                                     IMAGENET_DEFAULT_STD),
             ])
 
         val_transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize((224,224), interpolation=3),
+            transforms.Resize((224, 224), interpolation=3),
             transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
         ])
         train_test_dir = 'data/2750'
         self.d_train = DataLoader(
-            EuroSatDatasetHelper(train_test_dir, os.path.join(train_test_dir, 'train.csv'), transform=transform),
+            EuroSatDatasetHelper(train_test_dir, os.path.join(
+                train_test_dir, 'train.csv'), transform=transform),
             batch_size=batch_size, drop_last=True, shuffle=True,
         )
         self.d_test = DataLoader(
-            EuroSatDatasetHelper(train_test_dir, os.path.join(train_test_dir, 'test.csv'), transform=val_transform), 
+            EuroSatDatasetHelper(train_test_dir, os.path.join(
+                train_test_dir, 'test.csv'), transform=val_transform),
             batch_size=batch_size, drop_last=True, shuffle=True,
         )
 
@@ -91,10 +97,11 @@ class EuroSatDataset(Dataset):
             _, (x, y) = next(self.test_enum, (None, (None, None)))
             if x is None:
                 self.test_enum = enumerate(self.d_test)
-                _, (x, y) = next(self.train_enum)
+                _, (x, y) = next(self.test_enum)
 
         if self.patch_size is not None:
-            x = rearrange(x, 'b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=self.patch_size, p2=self.patch_size)
+            x = rearrange(x, 'b c (h p1) (w p2) -> b (h w) (p1 p2 c)',
+                          p1=self.patch_size, p2=self.patch_size)
 
         x = x.to(device=self.device)
         y = y.to(device=self.device)
