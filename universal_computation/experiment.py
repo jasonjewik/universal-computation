@@ -108,10 +108,10 @@ def experiment(
         use_embeddings = False
         experiment_type = 'classification'
 
-    elif task == 'next-day-wildfire-spread':
-        from universal_computation.datasets.next_day_wildfire_spread import NextDayWildfireSpreadDataset as NDWSD
-        dataset = NDWSD(batch_size=batch_size,
-                        patch_size=patch_size, device=device)
+    elif task == 'ndws':
+        from universal_computation.datasets.ndws import NDWSDataset
+        dataset = NDWSDataset(batch_size=batch_size,
+                              patch_size=patch_size, device=device)
         input_dim = 12 * patch_size**2  # 12 channels
         image_dim = 32 * 32
         n_classes = 3
@@ -167,7 +167,8 @@ def experiment(
             return ce_loss(out, y)
 
         def accuracy_fn(preds, true, x=None):
-            preds = preds[:, 0].argmax(-1)  # TODO: fix this
+            preds = preds[:, 0].reshape((batch_size, n_classes, image_dim))
+            preds = preds.argmax(1)
             return (preds == true).mean()
 
     else:

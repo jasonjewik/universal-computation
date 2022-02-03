@@ -8,7 +8,7 @@ from einops import rearrange
 from universal_computation.datasets.dataset import Dataset
 
 
-class NextDayWildfireSpreadDataset(Dataset):
+class NDWSDataset(Dataset):
     def __init__(self, batch_size, patch_size=None, data_aug=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
