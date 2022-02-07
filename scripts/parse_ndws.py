@@ -3,6 +3,45 @@ from typing import Dict, List, Text, Tuple
 import numpy as np
 import tensorflow as tf
 
+"""
+This script converts the Next Day Wildfire Spread (NDWS) dataset from its
+TFRecord format to NPZ format. It assumes the TFRecord files are stored at
+data/next-day-wildfire-spread. E.g.,
+    
+    data/next-day-wildfire-spread/next_day_wildfire_spread_train00.tfrecord
+    data/next-day-wildfire-spread/next_day_wildfire_spread_eval00.tfrecord
+    data/next-day-wildfire-spread/next_day_wildfire_spread_test00.tfrecord
+
+The train files are stored in data/ndws_train.npz. From there, they can be
+loaded like this
+
+    train_dict = np.load('data/ndws/ndws_train.npz')
+    train_dict[train_partition]
+
+where train_partition is train_00, train_01, ..., train_14. The evaluation and
+test NPZ files follow a similar pattern, except replace 'eval' with 'val' for
+the evaluation data.
+
+Data shape: (batch, height, width, channels).
+There are 13 channels for each data example. These channels are:
+    - elevation: in meters
+    - th: wind direction in degrees clockwise from north
+    - vs: wind speed in m/s
+    - tmmn: min temperature in Kelvin
+    - tmmx: max temperature in Kelvin
+    - sph: specific humidity
+    - pr: precipitation in mm
+    - pdsi: pressure
+    - NDVI: normalized difference vegetation index
+    - population: population density
+    - erc: NFDRS fire danger index energy release component (BTU/ft^2)
+    - PrevFireMask: 1 = fire, 0 = no fire, -1 = unlabeled
+    - FireMask: target, same labels as PrevFireMask
+
+The original NDWS dataset can be accessed here:
+https://www.kaggle.com/fantineh/next-day-wildfire-spread
+"""
+
 
 def main():
     data_size = 64   # km^2
