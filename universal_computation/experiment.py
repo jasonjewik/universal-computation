@@ -88,6 +88,15 @@ def experiment(
         use_embeddings = True
         experiment_type = 'classification'
 
+    elif task == 'deep-downscale':
+        from universal_computation.datasets.deep_downscale import DeepDownscaleDataset
+        dataset = DeepDownscaleDataset(batch_size, patch_size=patch_size, device=device)
+        x, y = dataset.get_batch()
+        input_dim = x.shape[-1]
+        output_dim = y.shape[-1]
+        use_embeddings = False
+        experiment_type = 'downscaling'
+
     else:
         raise NotImplementedError('dataset not implemented')
 
@@ -126,6 +135,19 @@ def experiment(
         def accuracy_fn(preds, true, x=None):
             preds = preds[:, 0].argmax(-1)
             return (preds == true).mean()
+
+    elif experiment_type == 'downscaling':
+        
+        mse_loss = torch.nn.MSELoss()
+
+        def loss_fn(out, y, x=None):
+            out = out[:, 0]
+            return mse_loss(out, y)
+
+        def accuracy_fn(preds, true, x=None):
+            preds = torch.tensor(preds)
+            true = torch.tensor(true)
+            return torch.sqrt(mse_loss(preds, true))
 
     else:
         raise NotImplementedError('experiment_type not recognized')

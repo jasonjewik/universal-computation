@@ -6,10 +6,10 @@ if __name__ == '__main__':
     experiment_name = 'fpt'
 
     experiment_params = dict(
-        task='bit-memory',
+        task='deep-downscale',
         n=1000,                # ignored if not a bit task
         num_patterns=5,        # ignored if not a bit task
-        patch_size=50,
+        patch_size=3,
 
         model_name='gpt2',
         pretrained=True,       # if vit this is forced to true, if lstm this is forced to false
