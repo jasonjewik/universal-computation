@@ -140,13 +140,26 @@ def experiment(
         
         mse_loss = torch.nn.MSELoss()
 
+        # when computing loss/accuracy, nans are
+        # ignored (i.e., if true[i] == nan, then
+        # we set pred[i] = true[i] = 0)
+        def nan_to_num(t, mask=None):
+            if mask is None:
+                mask = torch.isnan(t)
+            zeros = torch.zeros_like(t)
+            return torch.where(mask, zeros, t)
+
         def loss_fn(out, y, x=None):
             out = out[:, 0]
+            out = nan_to_num(out, torch.isnan(y))
+            y = nan_to_num(y)
             return mse_loss(out, y)
 
         def accuracy_fn(preds, true, x=None):
-            preds = torch.tensor(preds)
+            preds = torch.tensor(preds[:, 0])
             true = torch.tensor(true)
+            preds = nan_to_num(preds, torch.isnan(true))
+            true = nan_to_num(true)
             return torch.sqrt(mse_loss(preds, true))
 
     else:
@@ -245,7 +258,7 @@ def run_experiment(
     parser.add_argument('--test_steps_per_iter', type=int, default=25,
                         help='Number of test gradient steps per iteration')
 
-    parser.add_argument('--log_to_wandb', '-w', type=bool, default=False,
+    parser.add_argument('--log_to_wandb', '-w', action='store_true', default=False,
                         help='Whether or not to log to Weights and Biases')
     parser.add_argument('--note', '-n', type=str, default='',
                         help='An optional note to be logged to W&B')
@@ -254,7 +267,7 @@ def run_experiment(
     parser.add_argument('--include_date', type=bool, default=True,
                         help='Whether to include date in run name')
 
-    parser.add_argument('--save_models', '-s', type=bool, default=False,
+    parser.add_argument('--save_models', '-s', action='store_true', default=False,
                         help='Whether or not to save the model files locally')
     parser.add_argument('--save_models_every', '-int', type=int, default=25,
                         help='How often to save models locally')
