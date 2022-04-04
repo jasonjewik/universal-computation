@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import torch
 import wandb
 
@@ -9,6 +10,7 @@ import sys
 
 from universal_computation.fpt import FPT
 from universal_computation.trainer import Trainer
+from universal_computation.perf_metric import PerfMetric
 
 
 def experiment(
@@ -100,6 +102,8 @@ def experiment(
     else:
         raise NotImplementedError('dataset not implemented')
 
+    perf_metrics = []
+        
     if 'bit' in task:
 
         ce_loss = torch.nn.CrossEntropyLoss()
@@ -124,6 +128,9 @@ def experiment(
             else:
                 return ((preds > 0.5) == (true > 0.5)).mean()
 
+        acc_metric = PerfMetric('Accuracy', accuracy_fn)
+        perf_metrics.append(acc_metric)
+
     elif experiment_type == 'classification':
 
         ce_loss = torch.nn.CrossEntropyLoss()
@@ -135,6 +142,9 @@ def experiment(
         def accuracy_fn(preds, true, x=None):
             preds = preds[:, 0].argmax(-1)
             return (preds == true).mean()
+
+        acc_metric = PerfMetric('Accuracy', accuracy_fn)
+        perf_metrics.append(acc_metric)
 
     elif experiment_type == 'downscaling':
         
@@ -155,12 +165,33 @@ def experiment(
             y = nan_to_num(y)
             return mse_loss(out, y)
 
-        def accuracy_fn(preds, true, x=None):
+        def rmse_fn(preds, true, x=None):
             preds = torch.tensor(preds[:, 0])
             true = torch.tensor(true)
             preds = nan_to_num(preds, torch.isnan(true))
             true = nan_to_num(true)
             return torch.sqrt(mse_loss(preds, true))
+
+        def pearson_fn(preds, true, x=None):
+            preds = pd.DataFrame(preds[:, 0])
+            true = pd.DataFrame(true)
+            r = preds.corrwith(true, axis=1).mean()
+            return r
+
+        def ssim_fn(preds, true, x=None):
+            preds = preds[:, 0]
+            k1, k2 = 0.01, 0.03  # from the Wikipedia page on SSIM
+            L = np.power(2, 32) - 1
+            c1, c2 = np.square(k1 * L), np.square(k2 * L)
+            numer = (2 * preds.mean() * true.mean() + c1) * (2 * np.cov(preds, true) + c2)
+            denom = (np.square(preds.mean()) + np.square(true.mean()) + c1) * (preds.var() + true.var() + c2)
+            return (numer / denom).mean()
+
+        rmse_metric = PerfMetric('RMSE', rmse_fn)
+        pearson_metric = PerfMetric('Pearson Coefficient', pearson_fn)
+        ssim_metric = PerfMetric('SSSIM', ssim_fn)
+        perf_metrics.extend([rmse_metric, pearson_metric])
+            
 
     else:
         raise NotImplementedError('experiment_type not recognized')
@@ -191,7 +222,7 @@ def experiment(
         model,
         dataset,
         loss_fn=loss_fn,
-        accuracy_fn=accuracy_fn,
+        perf_metrics=perf_metrics,
         steps_per_epoch=exp_args['steps_per_iter'],
         test_steps_per_epoch=exp_args['test_steps_per_iter'],
         learning_rate=kwargs['learning_rate'],
